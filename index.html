@@ -327,9 +327,11 @@ const CONFIG = {
   hosts: ['promethean.local', 'promethean2.local', 'promethean3.local', 'promethean4.local'],
   // Send each browser to the copy of this page that can reach the lights:
   // Chrome/Edge 142+ -> https:// (uses Local Network Access), Safari/iPhone and others -> http://.
-  // Leave blank to swap http/https on the same address. Set both if the two copies live at different addresses.
-  secureUrl: '',
-  plainUrl: '',
+  // Two hostnames are needed: Safari 18.2+ auto-upgrades http:// navigations to https:// whenever the
+  // host has working HTTPS, so the plain copy must live on a host with NO HTTPS (an S3 website endpoint).
+  // Leave both blank only for local testing (then it just swaps http/https on the current address).
+  secureUrl: 'https://xelos.prometheanlighting.com/',
+  plainUrl: 'http://lights.prometheanlighting.com/',
   switchScheme: true,
   timeoutMs: 4000,
   version: 'Legacy web 1.0 (Mk1.5.1)'
@@ -750,13 +752,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#help').c
 
 /* ---------- start ---------- */
 (async function start(){
-  const stay = new URLSearchParams(location.search).has('stay');
+  // `via` marks a page we already redirected once. If the server bounced us back, stop here instead of looping.
+  const qs = new URLSearchParams(location.search), stay = qs.has('stay') || qs.has('via');
+  if (qs.has('via')){ qs.delete('via'); try{ history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '') + location.hash); }catch(e){} }
   lnaPerm = await lnaStatus();
   const wantSecure = !!lnaPerm;
   $('#buildInfo').textContent = CONFIG.version + (wantSecure ? ', network permission mode' : ', direct mode');
   if (CONFIG.switchScheme && !stay && !isLocalDev()){
-    if (wantSecure && location.protocol === 'http:'){ location.replace(otherSchemeUrl(true)); return; }
-    if (!wantSecure && location.protocol === 'https:'){ location.replace(otherSchemeUrl(false)); return; }
+    const hop = toSecure => { const u = new URL(otherSchemeUrl(toSecure), location.href); u.searchParams.set('via','1'); location.replace(u.toString()); };
+    if (wantSecure && location.protocol === 'http:'){ hop(true); return; }
+    if (!wantSecure && location.protocol === 'https:'){ hop(false); return; }
   }
   const alt = new URL(otherSchemeUrl(location.protocol !== 'https:'), location.href); alt.searchParams.set('stay','1');
   $('#altLink').innerHTML = `Still not working? <a href="${alt}" style="color:var(--text)">Try the other version of this page</a>.`;
