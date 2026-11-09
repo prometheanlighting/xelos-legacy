@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171D">
+<meta name="color-scheme" content="dark">
+<title>Xelos</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#15171D; --panel:#1F222A; --panel-2:#272B35; --rule:#323743;
+  --ember:#FF7948; --ember-ink:#1B0E08; --text:#F3F0EA; --muted:#A2A7B1;
+  --ok:#7FD69B; --warn:#FFB86B;
+  --r-lg:20px; --r-md:14px; --r-sm:10px;
+  --tap:56px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--night);color:var(--text)}
+body{font-family:"Saira",system-ui,sans-serif;font-size:17px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  min-height:100dvh;padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
+.wrap{max-width:540px;margin:0 auto;padding:0 16px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0;max-width:540px;margin:0 auto}
+.brand{font-stretch:75%;font-weight:700;letter-spacing:.02em;font-size:22px;display:flex;align-items:center;gap:10px}
+.brand img{height:27px;width:auto}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--rule);background:transparent;display:grid;place-items:center}
+
+/* roofline hero */
+.roof{margin:6px -8px 0;position:relative}
+.roof canvas{width:100%;aspect-ratio:3/1;display:block}
+.eave{fill:none;stroke:#3A3F4C;stroke-width:2;stroke-linejoin:round}
+.status{display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;color:var(--muted);min-height:24px;margin-top:-4px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.status[data-s="ok"] .dot{background:var(--ok)}
+.status[data-s="bad"] .dot{background:var(--warn)}
+.status[data-s="wait"] .dot{animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.nowplaying{text-align:center;font-weight:600;font-size:20px;margin:2px 0 0;font-stretch:85%}
+
+/* controller picker */
+.ctl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--panel);padding:6px;border-radius:var(--r-lg);margin:18px 0 0}
+.ctl button{height:48px;border:0;border-radius:var(--r-md);background:transparent;font-weight:600;color:var(--muted)}
+.ctl button[aria-pressed="true"]{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 2px var(--ember)}
+.ctl-label{font-size:14px;color:var(--muted);margin:16px 4px 0}
+
+/* power */
+.power{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.power button{height:72px;border-radius:var(--r-lg);border:0;font-size:22px;font-weight:700;font-stretch:85%;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-on{background:var(--ember);color:var(--ember-ink)}
+.btn-off{background:var(--panel);color:var(--text);box-shadow:inset 0 0 0 1px var(--rule)}
+.power button:active{transform:scale(.98)}
+
+/* sections */
+.view{display:none;padding-top:8px}
+.view.on{display:block}
+h2{font-size:26px;font-stretch:80%;font-weight:700;margin:26px 0 4px;line-height:1.1}
+h3{font-size:17px;font-weight:600;margin:22px 0 10px;color:var(--text)}
+.lede{color:var(--muted);margin:0 0 14px;font-size:15px;max-width:60ch}
+
+/* sliders */
+.dial{background:var(--panel);border-radius:var(--r-lg);padding:16px 18px 18px;margin-top:12px}
+.dial-head{display:flex;justify-content:space-between;align-items:baseline}
+.dial-head b{font-weight:600}
+.dial-head output{font-variant-numeric:tabular-nums;color:var(--muted)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;margin:6px 0 0}
+input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--ember) var(--p,50%),var(--panel-2) var(--p,50%))}
+input[type=range]::-moz-range-track{height:10px;border-radius:5px;background:var(--panel-2)}
+input[type=range]::-moz-range-progress{height:10px;border-radius:5px;background:var(--ember)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--text);margin-top:-10px;border:0;box-shadow:0 0 0 4px var(--night)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--text);border:0}
+
+/* chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 8px;margin:0 -16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:0 0 auto;height:42px;padding:0 16px;border-radius:21px;border:1px solid var(--rule);background:transparent;color:var(--muted);font-weight:600;font-size:15px}
+.chips button[aria-pressed="true"]{background:var(--text);color:var(--night);border-color:var(--text)}
+
+/* looks */
+.looks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.look{border:0;background:var(--panel);border-radius:var(--r-md);padding:12px 12px 12px;text-align:left;min-height:84px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.look .name{font-weight:600;font-size:16px;line-height:1.2}
+.look[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--ember);background:var(--panel-2)}
+.beads{display:flex;gap:4px}
+.beads i{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+.beads i.off{background:#2B2F39!important;box-shadow:none!important}
+.group-h{font-size:15px;color:var(--muted);font-weight:600;margin:20px 2px 8px}
+.group-h:first-child{margin-top:6px}
+.empty{background:var(--panel);border-radius:var(--r-md);padding:18px;color:var(--muted)}
+
+/* list buttons (motion) */
+.list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick{min-height:76px;border:0;border-radius:var(--r-md);background:var(--panel);font-weight:600;text-align:left;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.pick canvas{width:100%;aspect-ratio:220/16;display:block}
+.accent-prev{width:100%;aspect-ratio:220/16;display:block;margin:4px 0 2px}
+.pick[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--ember);background:var(--panel-2)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--panel);padding:6px;border-radius:var(--r-lg)}
+.seg button{height:48px;border:0;border-radius:var(--r-md);background:transparent;color:var(--muted);font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--text);box-shadow:inset 0 0 0 2px var(--ember)}
+
+/* custom */
+.bulbs8{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;margin-top:6px}
+.bulbs8 button{min-width:0;border:0;background:transparent;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bulbs8 .glass{width:100%;aspect-ratio:1;border-radius:50% 50% 46% 46%;box-shadow:0 0 0 2px var(--rule)}
+.bulbs8 .n{font-size:13px;color:var(--muted)}
+.bulbs8 button[aria-pressed="true"] .glass{box-shadow:0 0 0 3px var(--text)}
+.bulbs8 button[aria-pressed="true"] .n{color:var(--text);font-weight:600}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px}
+.swatches button{aspect-ratio:1;border-radius:50%;border:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.swatches label{aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);position:relative;cursor:pointer}
+.swatches label input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.swatches label span{width:42%;height:42%;border-radius:50%;background:var(--panel)}
+.row{display:flex;gap:10px;margin-top:14px}
+.btn{height:var(--tap);border-radius:var(--r-md);border:0;font-weight:700;padding:0 18px;flex:1}
+.btn.primary{background:var(--ember);color:var(--ember-ink)}
+.btn.ghost{background:var(--panel);box-shadow:inset 0 0 0 1px var(--rule)}
+.field{width:100%;height:var(--tap);border-radius:var(--r-md);border:1px solid var(--rule);background:var(--panel);padding:0 14px;font-size:17px}
+.saved-row{display:flex;gap:8px;align-items:stretch}
+.saved-row .look{flex:1}
+.del{width:52px;border:0;border-radius:var(--r-md);background:var(--panel);color:var(--muted);font-size:14px}
+
+/* timer */
+.switch{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border-radius:var(--r-lg);padding:14px 18px;min-height:72px}
+.switch b{font-weight:600;font-size:18px}
+.tog{width:64px;height:36px;border-radius:18px;border:0;background:var(--panel-2);position:relative;box-shadow:inset 0 0 0 1px var(--rule)}
+.tog::after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;background:var(--muted);transition:transform .18s}
+.tog[aria-checked="true"]{background:var(--ember)}
+.tog[aria-checked="true"]::after{transform:translateX(28px);background:var(--text)}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.time{background:var(--panel);border-radius:var(--r-lg);padding:14px 16px}
+.time label{display:block;color:var(--muted);font-size:14px;margin-bottom:4px}
+.time input{width:100%;background:transparent;border:0;font-size:28px;font-weight:700;font-stretch:85%;padding:0;color-scheme:dark}
+.note{color:var(--muted);font-size:14px;margin-top:12px}
+
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(21,23,29,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs-in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tabs button{height:68px;border:0;background:transparent;color:var(--muted);font-size:14px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.tabs svg{width:24px;height:24px}
+.tabs button[aria-current="page"]{color:var(--ember)}
+
+/* sheets & overlays */
+.sheet{position:fixed;inset:0;z-index:10;display:none;background:rgba(10,11,14,.72);align-items:flex-end;justify-content:center}
+.sheet.on{display:flex}
+.sheet-in{background:var(--panel);width:100%;max-width:540px;border-radius:24px 24px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
+.sheet-in h2{margin-top:0}
+.sheet-in p{margin:0 0 12px;max-width:60ch}
+.sheet-in ol{padding-left:20px;margin:0 0 14px}
+.sheet-in li{margin-bottom:8px}
+.fine{color:var(--muted);font-size:14px}
+.gate{position:fixed;inset:0;z-index:20;background:var(--night);display:none;flex-direction:column;justify-content:center;padding:24px}
+.gate.on{display:flex}
+.gate-in{max-width:440px;margin:0 auto;width:100%}
+.gate h1{font-size:40px;line-height:1.02;font-stretch:75%;font-weight:700;margin:18px 0 12px}
+.gate p{color:var(--muted);margin:0 0 22px}
+.gate .btn{width:100%;height:68px;font-size:20px}
+.gate canvas{width:100%;aspect-ratio:3/1;display:block;margin-top:28px}
+.gate-logo{width:200px;height:auto;display:block;opacity:.95}
+.trouble{background:var(--panel);border-radius:var(--r-lg);padding:16px 18px;margin-top:14px;display:none}
+.trouble.on{display:block}
+.trouble p{margin:0 0 10px;color:var(--muted);font-size:15px}
+.trouble b{color:var(--text)}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--night);padding:10px 18px;border-radius:22px;font-weight:600;font-size:15px;opacity:0;transition:.2s;pointer-events:none;z-index:30;white-space:nowrap}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand"><img src="xelos-mark.png" alt="" width="34" height="27"><span>Xelos</span></div>
+  <button class="iconbtn" id="helpBtn" aria-label="Help">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg>
+  </button>
+</div>
+
+<main class="wrap">
+  <div class="roof" aria-hidden="true"><canvas id="roof"></canvas></div>
+  <div class="status" id="status" data-s="wait" role="status"><span class="dot"></span><span id="statusText">Looking for your lights</span></div>
+  <p class="nowplaying" id="nowName">&nbsp;</p>
+
+  <div class="trouble" id="trouble">
+    <p><b>Can't reach your lights.</b> Make sure this phone is on your home Wi‑Fi, not cellular data, and that the controller box has power.</p>
+    <p>Still stuck? Type the number shown on the little screen on your controller box.</p>
+    <input class="field" id="ipInput" inputmode="decimal" placeholder="Example: 192.168.1.42" autocomplete="off">
+    <div class="row"><button class="btn primary" id="ipSave">Connect</button><button class="btn ghost" id="retry">Try again</button></div>
+    <p class="fine" id="altLink" style="margin-top:12px"></p>
+  </div>
+
+  <div class="power">
+    <button class="btn-on" id="onBtn">On</button>
+    <button class="btn-off" id="offBtn">Off</button>
+  </div>
+
+  <!-- HOME -->
+  <section class="view on" id="v-home" aria-label="Home">
+    <div class="dial">
+      <div class="dial-head"><b>Brightness</b><output id="briOut">50%</output></div>
+      <input type="range" id="bri" min="1" max="100" value="50" aria-label="Brightness">
+    </div>
+    <div class="dial">
+      <div class="dial-head"><b>Motion speed</b><output id="spdOut">4</output></div>
+      <input type="range" id="spd" min="0" max="20" value="4" aria-label="Motion speed">
+    </div>
+    <p class="ctl-label">Controller</p>
+    <div class="ctl" id="ctl" role="group" aria-label="Controller">
+      <button data-i="0">1</button><button data-i="1">2</button><button data-i="2">3</button><button data-i="3">4</button>
+    </div>
+    <p class="fine" style="margin:8px 4px 0">Most homes have one controller. If yours has more, pick the one you want to change.</p>
+  </section>
+
+  <!-- COLORS -->
+  <section class="view" id="v-colors" aria-label="Colors">
+    <h2>Colors</h2>
+    <p class="lede">Tap a look and your lights change right away.</p>
+    <div class="chips" id="catChips" role="group" aria-label="Color groups"></div>
+    <div id="lookArea"></div>
+  </section>
+
+  <!-- MOTION -->
+  <section class="view" id="v-motion" aria-label="Motion">
+    <h2>Motion</h2>
+    <p class="lede">How the colors move along your roof. Each preview uses your current colors and speed.</p>
+    <div class="seg" id="blendSeg" role="group" aria-label="Color edges">
+      <button data-b="blend">Smooth</button><button data-b="noblend">Crisp</button>
+    </div>
+    <h3>Effects</h3>
+    <div class="list" id="fxList"></div>
+    <h3>Accent spacing</h3>
+    <p class="lede">For accent lighting: light every few bulbs and leave the rest dark.</p>
+    <div class="dial"><canvas class="accent-prev" data-prev="AccentGap" aria-hidden="true"></canvas></div>
+    <div class="dial">
+      <div class="dial-head"><b>Gap between lit bulbs</b><output id="gapOut">2</output></div>
+      <input type="range" id="gap" min="1" max="20" value="2" aria-label="Gap between lit bulbs">
+    </div>
+    <div class="dial">
+      <div class="dial-head"><b>Bulbs lit in each group</b><output id="fillOut">1</output></div>
+      <input type="range" id="fill" min="1" max="10" value="1" aria-label="Bulbs lit in each group">
+    </div>
+  </section>
+
+  <!-- CUSTOM -->
+  <section class="view" id="v-custom" aria-label="Custom">
+    <h2>Make your own</h2>
+    <p class="lede">Your roofline repeats these eight colors. Tap a bulb, then tap a color.</p>
+    <div class="bulbs8" id="bulbs8"></div>
+    <div class="swatches" id="swatches"></div>
+    <div class="row">
+      <button class="btn ghost" id="paintAll">Use this color on all 8</button>
+    </div>
+    <h3>Save this look</h3>
+    <div class="row" style="margin-top:0">
+      <input class="field" id="saveName" placeholder="Name it, like Mom's Birthday" maxlength="28" style="flex:2">
+      <button class="btn primary" id="saveBtn" style="flex:1">Save</button>
+    </div>
+    <p class="fine">Saved looks appear under Colors, in My looks. They're kept on this phone.</p>
+  </section>
+
+  <!-- TIMER -->
+  <section class="view" id="v-timer" aria-label="Timer">
+    <h2>Timer</h2>
+    <p class="lede">Turn your lights on and off by themselves every day.</p>
+    <div class="switch"><b>Daily timer</b><button class="tog" id="timerTog" role="switch" aria-checked="false" aria-label="Daily timer"></button></div>
+    <div class="times">
+      <div class="time"><label for="tOn">Turn on at</label><input type="time" id="tOn" value="18:30"></div>
+      <div class="time"><label for="tOff">Turn off at</label><input type="time" id="tOff" value="23:30"></div>
+    </div>
+    <p class="note">Times follow this phone's clock. If your lights lose power, open this page and set the timer again.</p>
+  </section>
+
+  <footer>Xelos for original Promethean controllers. Final release.</footer>
+</main>
+
+<nav class="tabs" aria-label="Sections"><div class="tabs-in">
+  <button data-v="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
+  <button data-v="colors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="12" r="3"/><circle cx="17" cy="12" r="3"/><circle cx="12" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/></svg>Colors</button>
+  <button data-v="motion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12c3-6 6-6 9 0s6 6 9 0"/></svg>Motion</button>
+  <button data-v="custom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z"/><path d="M9.5 20.5h5"/></svg>Custom</button>
+  <button data-v="timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2.5h6"/></svg>Timer</button>
+</div></nav>
+
+<!-- first-run connect gate (Chrome needs a tap before it will ask for network permission) -->
+<div class="gate" id="gate">
+  <div class="gate-in">
+    <img class="gate-logo" src="promethean-logo.png" alt="Promethean Lighting" width="240" height="75">
+    <canvas id="gateRoof" aria-hidden="true"></canvas>
+    <h1>Let's find your lights</h1>
+    <p id="gateText">Make sure this phone is on your home Wi‑Fi. When your phone asks to find devices on your network, tap <b style="color:var(--text)">Allow</b>.</p>
+    <button class="btn primary" id="gateBtn">Connect to my lights</button>
+  </div>
+</div>
+
+<div class="sheet" id="help" role="dialog" aria-modal="true" aria-labelledby="helpH">
+  <div class="sheet-in">
+    <h2 id="helpH">Help</h2>
+    <h3>Lights aren't responding</h3>
+    <ol>
+      <li>Check that this phone is on your home Wi‑Fi. Turn off cellular data if you're not sure.</li>
+      <li>Check that the controller box is plugged in. Its little screen should show a number like 192.168.1.42.</li>
+      <li>Type that number on the Home screen under "Can't reach your lights," then tap Connect.</li>
+    </ol>
+    <h3>Blocked network access by mistake?</h3>
+    <p>Open your browser's settings for this site and set <b>Local network access</b> to Allow, then reload this page.</p>
+    <h3>About this app</h3>
+    <p>This is the final version of the Xelos app for original Promethean controllers. It's provided as-is and won't get further updates.</p>
+    <img src="promethean-logo.png" alt="Promethean Lighting" width="200" height="63" style="width:160px;height:auto;margin:6px 0 10px;display:block">
+    <p class="fine" id="buildInfo"></p>
+    <button class="btn ghost" id="helpClose" style="width:100%;margin-top:6px">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ===== Settings you may want to change before publishing ===== */
+const CONFIG = {
+  // Controller addresses for buttons 1–4 (Mk1.5.1 firmware mDNS names).
+  hosts: ['promethean.local', 'promethean2.local', 'promethean3.local', 'promethean4.local'],
+  // Send each browser to the copy of this page that can reach the lights:
+  // Chrome/Edge 142+ -> https:// (uses Local Network Access), Safari/iPhone and others -> http://.
+  // Leave blank to swap http/https on the same address. Set both if the two copies live at different addresses.
+  secureUrl: '',
+  plainUrl: '',
+  switchScheme: true,
+  timeoutMs: 4000,
+  version: 'Legacy web 1.0 (Mk1.5.1)'
+};
+/* ============================================================== */
+
+const DATA = {"colors":{"AW001":["FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF"],"Aloha":["32CD32","FF00FF","FFFFFF","32CD32","FF00FF","FFFFFF","32CD32","FF00FF","FFFFFF","32CD32","32CD32","FF00FF","FF00FF","FFFFFF","FFFFFF","000000"],"AprilShowers":["00BFFF","FFFF00","00BFFF","FFFF00","00BFFF","FFFF00","00BFFF","FFFF00","00BFFF","00BFFF","FFFF00","FFFF00","00BFFF","000000","FFFF00","000000"],"BlackLightFluorescent":["A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF","A700FF"],"Candle":["FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329","FF9329"],"Candycorn":["FF4500","FFD700","FFFFFF","000000","FF4500","FFD700","FFFFFF","000000","FF4500","FF4500","FFD700","FFD700","FFFFFF","FFFFFF","000000","000000"],"CarbonArc":["FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4","FFFAF4"],"ChicksAndBunnies":["FF1493","FFD700","FF1493","FFD700","FF1493","FFD700","FF1493","FFD700","FF1493","FF1493","FFD700","FFD700","FF1493","000000","FFD700","000000"],"ClearBlueSky":["409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF","409CFF"],"CoolWhiteFluorescent":["D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF","D4EBFF"],"Cottontail":["FF1493","FFFFFF","FFFF00","FF1493","FFFFFF","FFFF00","FF1493","FFFFFF","FFFF00","FF1493","FF1493","FFFFFF","FFFFFF","FFFF00","FFFF00","000000"],"CountDracula":["8B0000","000000","808080","8B0000","000000","808080","8B0000","000000","808080","8B0000","8B0000","000000","000000","808080","808080","000000"],"CupidsArrow":["FF00FF","8B0000","FF00FF","8B0000","FF00FF","8B0000","FF00FF","8B0000","FF00FF","FF00FF","8B0000","8B0000","FF00FF","000000","8B0000","000000"],"DirectSunlight":["FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF","FFFFFF"],"FlowerPower":["FF1493","FFFFFF","4B0082","FF1493","FFFFFF","4B0082","FF1493","FFFFFF","4B0082","FF1493","FF1493","FFFFFF","FFFFFF","4B0082","4B0082","000000"],"Frankenstein":["FF8C00","4B0082","008000","FF8C00","4B0082","008000","FF8C00","4B0082","008000","FF8C00","FF8C00","4B0082","4B0082","008000","008000","000000"],"FullSpectrumFluorescent":["FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2","FFF4F2"],"GrowLightFluorescent":["FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7","FFEFF7"],"HighNoon":["FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB","FFFFFB"],"HighPressureSodium":["FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C","FFB74C"],"HocusPocus":["006400","8B0000","A700FF","006400","8B0000","A700FF","006400","8B0000","A700FF","006400","006400","8B0000","8B0000","A700FF","A700FF","000000"],"HomeForChristmas":["006400","8B0000","FFD700","000000","006400","8B0000","FFD700","000000","006400","006400","8B0000","8B0000","FFD700","FFD700","000000","000000"],"IceCastle":["000080","40E0D0","FFFFFF","000080","40E0D0","FFFFFF","000080","40E0D0","FFFFFF","000080","000080","40E0D0","40E0D0","FFFFFF","FFFFFF","000000"],"LeavesAreFalling":["FF8C00","FFD700","D2B48C","FF8C00","FFD700","D2B48C","FF8C00","FFD700","D2B48C","FF8C00","FF8C00","FFD700","FFD700","D2B48C","D2B48C","000000"],"Leprechaun":["008000","FFD700","008000","FFD700","008000","FFD700","008000","FFD700","008000","008000","FFD700","FFD700","008000","008000","FFD700","FFD700"],"LuckyCharms":["FF0000","000000","AB5500","000000","ABAB00","000000","00FF00","000000","00AB55","000000","0000FF","000000","5500AB","000000","AB0055","000000"],"MercuryVapor":["D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF","D8F7FF"],"MetalHalide":["F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF","F2FCFF"],"Mistletoe":["FF0000","006400","FF0000","006400","FF0000","006400","FF0000","006400","FF0000","FF0000","006400","006400","FF0000","006400","000000","000000"],"MonsterMash":["FF8C00","000000","FF8C00","000000","FF8C00","000000","FF8C00","000000","FF8C00","FF8C00","000000","000000","FF8C00","000000","FF8C00","000000"],"NY001":["FFD700","FFFFFF","000000","C0C0C0","FFD700","FFFFFF","000000","C0C0C0","FFD700","FFD700","FFFFFF","FFFFFF","000000","000000","C0C0C0","C0C0C0"],"NorthPole":["8B0000","FFFFFF","8B0000","FFFFFF","8B0000","FFFFFF","8B0000","FFFFFF","8B0000","8B0000","FFFFFF","FFFFFF","8B0000","8B0000","FFFFFF","FFFFFF"],"OvercastSky":["C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF","C9E2FF"],"PeppermintTwist":["FF0000","FFFFFF","008000","000000","FF0000","FFFFFF","008000","000000","FF0000","FF0000","FFFFFF","FFFFFF","008000","008000","000000","000000"],"PinchMe":["008000","7CFC00","008000","7CFC00","008000","7CFC00","008000","7CFC00","008000","008000","7CFC00","7CFC00","008000","000000","7CFC00","000000"],"PumpkinPie":["FF8C00","FFA500","FFFFFF","FF8C00","FFA500","FFFFFF","FF8C00","FFA500","FFFF00","FF8C00","FF8C00","FFA500","FFA500","FFFFFF","FFFFFF","000000"],"PumpkinSpice":["FF8C00","FFFFFF","FF8C00","FFFFFF","FF8C00","FFFFFF","FF8C00","FFFFFF","FF8C00","FF8C00","FFFFFF","FFFFFF","FF8C00","000000","FFFFFF","000000"],"RedWhiteBlue":["FF0000","FFFFFF","0000FF","FF0000","FFFFFF","0000FF","FF0000","FFFFFF","0000FF","FF0000","FF0000","FFFFFF","FFFFFF","0000FF","0000FF","000000"],"RosesAreRed":["8B0000","FF0000","8B0000","FF0000","8B0000","FF0000","8B0000","FF0000","8B0000","8B0000","FF0000","FF0000","8B0000","000000","FF0000","000000"],"Scarecrow":["006400","FFFF00","D2B48C","006400","FFFF00","D2B48C","006400","FFFF00","D2B48C","006400","006400","FFFF00","FFFF00","D2B48C","D2B48C","000000"],"SleighBells":["FFD700","8B0000","FFD700","8B0000","FFD700","8B0000","FFD700","8B0000","FFD700","FFD700","8B0000","8B0000","FFD700","8B0000","000000","000000"],"Snowflakes":["FFFAFA","808080","FFFFFF","000000","FFFAFA","808080","FFFFFF","000000","FFFAFA","FFFAFA","808080","808080","FFFFFF","FFFFFF","000000","000000"],"SodiumVapor":["FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2","FFD1B2"],"Springtime":["FFC0CB","800080","6495ED","FFC0CB","800080","6495ED","FFC0CB","800080","6495ED","FFC0CB","FFC0CB","800080","800080","6495ED","6495ED","000000"],"StandardFluorescent":["F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA","F4FFFA"],"Sunset":["FF1493","DDA0DD","FF4500","87CEEB","FF1493","DDA0DD","FF4500","87CEEB","FF1493","FF1493","DDA0DD","DDA0DD","FF4500","FF4500","87CEEB","87CEEB"],"Sunshine":["FF0000","FF4500","FFA500","FFFF00","FF0000","FF4500","FFA500","FFFF00","FF0000","FF0000","FF4500","FF4500","FFA500","FFA500","FFFF00","FFFF00"],"Sweetheart":["800080","8B0000","800080","8B0000","800080","8B0000","800080","8B0000","800080","800080","8B0000","8B0000","800080","000000","8B0000","000000"],"ThanksgivingDinner":["D2B48C","FF8C00","FFFFFF","008000","FFD700","D2B48C","FF8C00","FFFFFF","008000","FFD700","D2B48C","FF8C00","FFFFFF","008000","FFD700","000000"],"Tiffanys":["00CED1","FFFFFF","00CED1","FFFFFF","00CED1","FFFFFF","00CED1","FFFFFF","00CED1","00CED1","FFFFFF","FFFFFF","00CED1","00CED1","FFFFFF","FFFFFF"],"TrueLove":["FFFFFF","FF0000","FFFFFF","FF0000","FFFFFF","FF0000","FFFFFF","FF0000","FFFFFF","FFFFFF","FF0000","FF0000","FFFFFF","000000","FF0000","000000"],"Tungsten100":["FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA","FFD6AA"],"Tungsten40":["FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F","FFC58F"],"USAUSA":["FF0000","FFFFFF","0000FF","000000","FF0000","FFFFFF","0000FF","000000","FF0000","FF0000","FFFFFF","FFFFFF","0000FF","0000FF","000000","000000"],"WarmFluorescent":["FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5","FFF4E5"],"Watermelon":["7CFC00","FF0000","7CFC00","FF0000","7CFC00","FF0000","7CFC00","FF0000","7CFC00","7CFC00","FF0000","FF0000","7CFC00","000000","FF0000","000000"],"Waves":["0000FF","00008B","0000FF","00008B","0000FF","00008B","0000FF","00008B","0000FF","0000FF","00008B","00008B","0000FF","000000","00008B","000000"],"WinterWonderland":["FFFFFF","FFD700","0000FF","000000","FFFFFF","FFD700","0000FF","000000","FFFFFF","FFFFFF","FFD700","FFD700","0000FF","0000FF","000000","000000"],"WitchsNightOut":["008000","A700FF","008000","A700FF","008000","A700FF","008000","A700FF","008000","008000","A700FF","A700FF","008000","000000","A700FF","000000"],"FreshStart":["FF9329","000000","FF9329","000000","FF9329","000000","FF9329","000000","FF9329","FF9329","000000","000000","FF9329","FF9329","000000","000000"]},"cats":{"holidays":[["New Year's",[["NY001","New Year"],["FreshStart","Fresh Start"]],1],["Valentine's Day",[["RosesAreRed","Roses Are Red"],["Sweetheart","Sweetheart"],["CupidsArrow","Cupid's Arrow"],["TrueLove","True Love"]],2],["St. Patrick's Day",[["Leprechaun","Leprechaun"],["PinchMe","Pinch Me"],["LuckyCharms","Rainbow Clover"]],3],["Easter",[["Cottontail","Cottontail"],["ChicksAndBunnies","Chicks & Bunnies"]],4],["Fourth of July",[["RedWhiteBlue","Firework"],["USAUSA","USA USA"]],7],["Halloween",[["Frankenstein","Frankenstein"],["WitchsNightOut","Witch's Night Out"],["Candycorn","Candy Corn"],["MonsterMash","Monster Mash"],["CountDracula","Count Dracula"],["HocusPocus","Hocus Pocus"]],10],["Thanksgiving",[["PumpkinPie","Pumpkin Pie"],["ThanksgivingDinner","Thanksgiving Dinner"]],11],["Christmas",[["NorthPole","North Pole"],["PeppermintTwist","Peppermint Twist"],["SleighBells","Sleigh Bells"],["Mistletoe","Mistletoe"],["HomeForChristmas","Home for Christmas"],["WinterWonderland","Winter Wonderland"]],12]],"winter":[["IceCastle","Ice Castle"],["Snowflakes","Snowflakes"],["NorthPole","North Pole"],["PeppermintTwist","Peppermint Twist"],["SleighBells","Sleigh Bells"],["Mistletoe","Mistletoe"],["HomeForChristmas","Home for Christmas"],["WinterWonderland","Winter Wonderland"],["NY001","New Year"],["Tiffanys","Robin's Egg"],["FreshStart","Fresh Start"],["RosesAreRed","Roses Are Red"],["Sweetheart","Sweetheart"],["CupidsArrow","Cupid's Arrow"],["TrueLove","True Love"]],"spring":[["Leprechaun","Leprechaun"],["PinchMe","Pinch Me"],["LuckyCharms","Rainbow Clover"],["Springtime","Springtime"],["AprilShowers","April Showers"],["FlowerPower","Flower Power"],["Cottontail","Cottontail"],["ChicksAndBunnies","Chicks & Bunnies"]],"summer":[["Sunset","Sunset"],["Waves","Waves"],["Aloha","Aloha"],["Watermelon","Watermelon"],["Sunshine","Sunshine"],["RedWhiteBlue","Firework"],["USAUSA","USA USA"]],"fall":[["LeavesAreFalling","Leaves Are Falling"],["Scarecrow","Scarecrow"],["PumpkinPie","Pumpkin Pie"],["ThanksgivingDinner","Thanksgiving Dinner"],["Frankenstein","Frankenstein"],["PumpkinSpice","Pumpkin Spice"],["WitchsNightOut","Witch's Night Out"],["Candycorn","Candy Corn"],["MonsterMash","Monster Mash"],["CountDracula","Count Dracula"],["HocusPocus","Hocus Pocus"]],"white":[["AW001","Full White"],["Candle","Candle"],["Tungsten40","Low Tungsten"],["Tungsten100","High Tungsten"],["CarbonArc","Carbon Arc"],["HighNoon","High Noon"],["DirectSunlight","Direct Sun"],["OvercastSky","Overcast"],["ClearBlueSky","Clear Skies"],["WarmFluorescent","Warm White"],["StandardFluorescent","Standard White"],["CoolWhiteFluorescent","Cool White"],["FullSpectrumFluorescent","Full Spectrum"],["GrowLightFluorescent","Grow Light"],["BlackLightFluorescent","Black Light"],["MercuryVapor","Mercury Vapor"],["SodiumVapor","Sodium Vapor"],["MetalHalide","Metal Halide"],["HighPressureSodium","Pressure Sodium"]],"picks":[["WinterWonderland","Winter Wonderland"],["WarmFluorescent","Warm White"],["PeppermintTwist","Peppermint Twist"],["HomeForChristmas","Home for Christmas"],["IceCastle","Ice Castle"],["Candle","Candle"],["USAUSA","USA USA"],["Candycorn","Candy Corn"],["Sunset","Sunset"],["Leprechaun","Leprechaun"]]}};
+
+const EFFECTS = [
+  ['Chase','Standard'],['Reverse Chase','PaletteChase'],['Swish','BPM'],['Twinkle','PalettePop'],
+  ['Confetti','RunSingle'],['Alternating','AlternatingLights'],['Full','RunFull'],['Wave','singleSine'],
+  ['Symmetric Wave','SymmetricalWave'],['Light Bar','LightBar'],['Comet','Comet'],['Firework','Firework'],
+  ['Galaxy','Confetti'],['Bounce','Sinelon'],['Random','Juggle']
+];
+const CATS = [['holidays','Holidays'],['picks','Staff picks'],['winter','Winter'],['spring','Spring'],['summer','Summer'],['fall','Fall'],['white','White light'],['mine','My looks']];
+const SWATCHES = ['#FF0000','#FF4500','#FF8C00','#FFD700','#FFFF00','#7CFC00','#00FF00','#008000','#00CED1','#00BFFF','#0000FF','#4B0082','#9400D3','#FF00FF','#FF1493','#FFC0CB','#FFFFFF','#FF9329','#000000'];
+
+/* ---------- storage (best effort) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('xelos.'+k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('xelos.'+k, JSON.stringify(v)); }catch(e){} }
+};
+const S = {
+  slot: store.get('slot', 0),
+  ips: store.get('ips', [null,null,null,null]),
+  per: store.get('per', [{},{},{},{}]),        // per-controller: look, bri, spd, fx, blend, power
+  custom: store.get('custom', ['#FF0000','#FFFFFF','#00FF00','#FFFFFF','#FF0000','#FFFFFF','#00FF00','#FFFFFF']),
+  saved: store.get('saved', []),
+  timer: store.get('timer', {on:false, tOn:'18:30', tOff:'23:30'}),
+  cat: null, sel: 0
+};
+const P = () => S.per[S.slot] || (S.per[S.slot] = {});
+const save = () => { store.set('slot',S.slot); store.set('ips',S.ips); store.set('per',S.per); store.set('custom',S.custom); store.set('saved',S.saved); store.set('timer',S.timer); };
+
+const $ = s => document.querySelector(s);
+// ?host=192.168.1.50:80 overrides the selected controller's address (handy for testing).
+const HOST_OVERRIDE = new URLSearchParams(location.search).get('host');
+const hostFor = i => (HOST_OVERRIDE && i === S.slot) ? HOST_OVERRIDE : (S.ips[i] || CONFIG.hosts[i]);
+const ctlName = i => 'Controller ' + (i+1);
+
+/* ---------- scheme routing ---------- */
+function chromiumMajor(){
+  try{ const b = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+       const c = b.find(x => /Chromium/i.test(x.brand)); return c ? parseInt(c.version,10) : 0; }catch(e){ return 0; }
+}
+async function lnaStatus(){
+  if (!navigator.permissions || !navigator.permissions.query) return null;
+  try{ return await navigator.permissions.query({name:'local-network'}); }catch(e){}
+  if (chromiumMajor() >= 142){ try{ return await navigator.permissions.query({name:'local-network-access'}); }catch(e){} }
+  return null;
+}
+function otherSchemeUrl(toSecure){
+  const cfg = toSecure ? CONFIG.secureUrl : CONFIG.plainUrl;
+  if (cfg) return cfg;
+  const u = new URL(location.href); u.protocol = toSecure ? 'https:' : 'http:'; u.searchParams.delete('stay'); return u.toString();
+}
+const isLocalDev = () => location.protocol === 'file:' || /^(localhost|127\.|\[::1\])/.test(location.hostname);
+
+/* ---------- talking to the controller ---------- */
+let chain = Promise.resolve();
+let lnaPerm = null;
+function withTimeout(ms){
+  if (window.AbortSignal && AbortSignal.timeout) return {signal:AbortSignal.timeout(ms)};
+  const c = new AbortController(); setTimeout(() => c.abort(), ms); return {signal:c.signal};
+}
+async function hit(path){
+  const url = 'http://' + hostFor(S.slot) + path;
+  const space = /^(127\.|localhost|\[::1\])/.test(hostFor(S.slot)) ? 'loopback' : 'local';
+  const opts = Object.assign({mode:'no-cors', cache:'no-store', targetAddressSpace:space}, withTimeout(CONFIG.timeoutMs));
+  try{ await fetch(url, opts); setStatus('ok'); return true; }
+  catch(e){ setStatus('bad'); return false; }
+}
+function send(...paths){
+  const p = chain.then(async () => { let ok = true; for (const x of paths){ ok = (await hit(x)) && ok; } return ok; });
+  chain = p.catch(() => {});
+  return p;
+}
+const ping = () => send('/time');   // read-only on the controller; never request unknown paths (they re-enter loop())
+
+/* ---------- status ---------- */
+function setStatus(s){
+  const el = $('#status'); el.dataset.s = s;
+  $('#statusText').textContent = s === 'ok' ? 'Connected to ' + ctlName(S.slot)
+    : s === 'bad' ? "Can't reach " + ctlName(S.slot) : 'Looking for ' + ctlName(S.slot);
+  $('#trouble').classList.toggle('on', s === 'bad');
+  if (s === 'bad') $('#ipInput').value = S.ips[S.slot] || '';
+}
+
+/* ---------- light preview: a small copy of the Mk1.5.1 effect math ---------- */
+// Mirrors patternCalls() in the firmware: startIndex += motion and gHue++ once per frame,
+// ColorFromPalette() over the 16-entry palette, fadeToBlackBy() trails, beatsin16() timing.
+const FX_FPS = 30;   // roughly how fast a Mk1.5.1 controller redraws 1,014 bulbs
+const hexRGB = h => { const n = parseInt(h,16); return [n>>16&255, n>>8&255, n&255]; };
+function cfp(pal, idx, bri, blend){
+  idx &= 255; const hi = idx >> 4, lo = idx & 15, a = pal[hi];
+  let r = a[0], g = a[1], b = a[2];
+  if (blend && lo){ const c = pal[(hi+1)&15], f = lo/16; r += (c[0]-r)*f; g += (c[1]-g)*f; b += (c[2]-b)*f; }
+  const k = (bri & 255) / 255; return [r*k, g*k, b*k];
+}
+function hsv(h, s, v){
+  h = (h & 255) / 255 * 6; s /= 255; v /= 255;
+  const i = Math.floor(h), f = h - i, p = v*(1-s), q = v*(1-s*f), t = v*(1-s*(1-f));
+  const [r,g,b] = [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i % 6];
+  return [r*255, g*255, b*255];
+}
+function beatsin(bpm, lo, hi, now, timebase=0){
+  const s = Math.sin(2*Math.PI*(((now - timebase) * bpm / 60000) % 1));
+  return Math.min(hi-1, lo + Math.floor((s+1)/2 * (hi-lo)));
+}
+class Strip{
+  constructor(n){ this.n = n; this.px = Array.from({length:n}, () => [0,0,0]); this.si = 0; this.hue = 0; this.acc = 0; this.fx = null; }
+  fade(x){ const k = (255-x)/256; for (const p of this.px){ p[0]*=k; p[1]*=k; p[2]*=k; } }
+  step(o, now){
+    const {fx, pal, blend, motion, bright, gap, fill} = o, n = this.n, px = this.px;
+    if (fx !== this.fx){ this.fx = fx; px.forEach(p => p.fill(0)); }
+    this.si = (this.si + motion) & 255; this.hue = (this.hue + 1) & 255;
+    const si = this.si, hue = this.hue, set = (i, c) => { if (i >= 0 && i < n) px[i] = c; };
+    const each = f => { for (let i=0;i<n;i++) px[i] = f(i); };
+    switch (fx){
+      case 'PaletteChase': each(i => cfp(pal, si + 254*i, 255, blend)); break;
+      case 'PalettePop':   each(i => cfp(pal, si + 53*i, 255, blend)); break;
+      case 'RunSingle':    each(i => cfp(pal, si + 1011*i, 255, blend)); break;
+      case 'RunFull':      each(() => cfp(pal, si, 255, blend)); break;
+      case 'AlternatingLights': each(i => cfp(pal, i % 2 ? si + 16 : si, 255, blend)); break;
+      case 'LightBar':     each(i => cfp(pal, i < n/2 ? si : si + 16, 255, blend)); break;
+      case 'AccentGap': { const m = gap + fill - 1; each(i => (i % m) < fill ? cfp(pal, si, 255, blend) : [0,0,0]); break; }
+      case 'BPM': { const beat = beatsin(62, 64, 256, now);
+        each(i => cfp(pal, hue + 2*i, (beat - hue + (i*10) * Math.floor(bright/255) * bright) & 255, true)); break; }
+      case 'singleSine': this.fade(30); set(beatsin(20, 0, n, now), cfp(pal, si, 255, blend)); break;
+      case 'SymmetricalWave': set(beatsin(30, 0, n, now), cfp(pal, si, 255, blend)); set(beatsin(30, 0, n, now, 1000), cfp(pal, si + 16, 255, blend)); this.fade(25); break;
+      case 'Comet': set(beatsin(5, 0, n, now), cfp(pal, si, 255, blend)); this.fade(15); break;
+      case 'Firework': { const stop = beatsin(20, 0, n, now), pos = Math.floor(Math.random()*n);
+        set(stop, cfp(pal, si, 255, blend)); this.fade(60);
+        if (stop === pos) for (let j = pos - Math.floor(n/4); j < pos + Math.floor(n/4); j++) set(j, cfp(pal, si, 255, blend));
+        break; }
+      case 'Confetti': { this.fade(10); const i = Math.floor(Math.random()*n), c = hsv(hue + Math.floor(Math.random()*64), 200, 255);
+        px[i] = px[i].map((v,k) => Math.min(255, v + c[k])); break; }
+      case 'Sinelon': { this.fade(20); const i = beatsin(13, 0, n, now), c = hsv(hue, 255, 192);
+        px[i] = px[i].map((v,k) => Math.min(255, v + c[k])); break; }
+      case 'Juggle': { this.fade(20); for (let d=0; d<8; d++){ const i = beatsin(d+7, 0, n, now), c = hsv(d*32, 200, 255);
+        px[i] = px[i].map((v,k) => Math.max(v, c[k])); } break; }
+      default: each(i => cfp(pal, si + 3*i, 255, blend));   // Standard
+    }
+  }
+  advance(o, now, dt){
+    if (o.motionless){ return; }
+    this.acc += dt; let guard = 0;
+    while (this.acc >= 1000/FX_FPS && guard++ < 4){ this.acc -= 1000/FX_FPS; this.step(o, now); }
+    if (guard >= 4) this.acc = 0;
+  }
+  warm(o, now){ for (let k=0;k<60;k++) this.step(o, now + k*33); }
+}
+function previewOpts(fx){
+  const p = P(), look = p.look;
+  const hex = look === 'Custom' ? Array.from({length:16}, (_,i) => S.custom[i % 8].replace('#',''))
+            : (DATA.colors[look] || DATA.colors.WarmFluorescent);
+  return { fx: fx || p.fx || 'Standard', pal: hex.map(hexRGB), blend: (p.blend || 'blend') === 'blend',
+           motion: p.spd ?? 3, bright: Math.max(1, Math.round((p.bri ?? 50) * 2.55)),
+           gap: p.gap ?? 2, fill: p.fill ?? 1 };
+}
+const OFF_RGB = [43,47,57];
+function drawBulbs(ctx, pts, px, opts){
+  const {r = 4.6, glow = 1, alpha = 1, scale = 1} = opts || {};
+  for (let i=0;i<pts.length;i++){
+    const [x,y] = pts[i], c = px[i] || [0,0,0], lum = Math.max(c[0],c[1],c[2]) / 255 * alpha;
+    if (lum > .04 && glow){
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r*2.6);
+      g.addColorStop(0, `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${.55*lum*glow})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r*2.6, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    const m = Math.min(1, lum * 1.15);
+    ctx.fillStyle = `rgb(${(OFF_RGB[0] + (c[0]*alpha - OFF_RGB[0])*m)|0},${(OFF_RGB[1] + (c[1]*alpha - OFF_RGB[1])*m)|0},${(OFF_RGB[2] + (c[2]*alpha - OFF_RGB[2])*m)|0})`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  }
+}
+function fitCanvas(cv, w, h){
+  const dpr = Math.min(3, window.devicePixelRatio || 1), cw = cv.clientWidth || w;
+  if (cv.width !== Math.round(cw*dpr)){ cv.width = Math.round(cw*dpr); cv.height = Math.round(cw*dpr*h/w); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(cv.width / w, 0, 0, cv.height / h, 0, 0); ctx.clearRect(0, 0, w, h); return ctx;
+}
+
+/* roofline */
+const ROOF_N = 41;
+const PTS = (() => { const pts = [], a = [12,104], b = [180,22], c = [348,104];
+  for (let i=0;i<ROOF_N;i++){ const t = i/(ROOF_N-1), s = t < .5 ? [a,b,t*2] : [b,c,(t-.5)*2];
+    pts.push([s[0][0]+(s[1][0]-s[0][0])*s[2], s[0][1]+(s[1][1]-s[0][1])*s[2] + 7]); }
+  return pts; })();
+const roofStrip = new Strip(ROOF_N), gateStrip = new Strip(ROOF_N);
+function drawRoof(cv, strip, alpha){
+  const ctx = fitCanvas(cv, 360, 120);
+  ctx.strokeStyle = '#3A3F4C'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(2,112); ctx.lineTo(180,18); ctx.lineTo(358,112); ctx.stroke();
+  drawBulbs(ctx, PTS, strip.px, {r:4, alpha, glow:1.25});
+}
+/* effect tiles + accent spacing strip */
+const TILE_N = 22, tileStrips = {};
+const linePts = (n, w, h) => Array.from({length:n}, (_,i) => [ (i+.5) * w/n, h/2 ]);
+const TILE_PTS = linePts(TILE_N, 220, 16);
+function drawTile(cv, strip){ const ctx = fitCanvas(cv, 220, 16); drawBulbs(ctx, TILE_PTS, strip.px, {r:3.4, glow:.8}); }
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function paintRoof(){   // called after any change; redraws a still frame when animation is off
+  if (reduceMotion.matches || P().power === false) renderFrame(performance.now(), 0, true);
+}
+let lastT = performance.now();
+function renderFrame(now, dt, still){
+  const on = P().power !== false, alpha = on ? .55 + .45*((P().bri ?? 50)/100) : 0;
+  const o = previewOpts();
+  if (still) roofStrip.warm(o, now); else if (on) roofStrip.advance(o, now, dt);
+  drawRoof($('#roof'), roofStrip, alpha);
+  if ($('#gate').classList.contains('on')){
+    const g = Object.assign(previewOpts('Standard'), {pal: DATA.colors.WarmFluorescent.map(hexRGB), motion: 2});
+    if (still) gateStrip.warm(g, now); else gateStrip.advance(g, now, dt);
+    drawRoof($('#gateRoof'), gateStrip, 1);
+  }
+  if ($('#v-motion').classList.contains('on')){
+    document.querySelectorAll('canvas[data-prev]').forEach(cv => {
+      const fx = cv.dataset.prev, s = tileStrips[fx] || (tileStrips[fx] = new Strip(TILE_N)), to = previewOpts(fx);
+      if (still) s.warm(to, now); else s.advance(to, now, dt);
+      drawTile(cv, s);
+    });
+  }
+}
+function tick(now){
+  const dt = Math.min(200, now - lastT); lastT = now;
+  if (!reduceMotion.matches) renderFrame(now, dt, false);
+  requestAnimationFrame(tick);
+}
+reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => paintRoof());
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1600); }
+
+/* ---------- views ---------- */
+function show(v){
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id === 'v-'+v));
+  document.querySelectorAll('.tabs button').forEach(b => { if (b.dataset.v === v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+  if (v === 'colors') renderLooks();
+  if (v === 'motion' && reduceMotion.matches) requestAnimationFrame(() => renderFrame(performance.now(), 0, true));
+  window.scrollTo({top: v === 'home' ? 0 : $('#v-'+v).offsetTop - 8, behavior:'instant'});
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.v)));
+
+function lookLabel(code){
+  for (const k in DATA.cats){
+    const list = k === 'holidays' ? DATA.cats[k].flatMap(g => g[1]) : DATA.cats[k];
+    const f = list.find(x => x[0] === code); if (f) return f[1];
+  }
+  return null;
+}
+function renderNow(){
+  const p = P(); let n = '';
+  if (p.power === false) n = 'Lights off';
+  else if (p.look === 'Custom') n = p.lookName || 'Your custom look';
+  else if (p.look) n = lookLabel(p.look) || '';
+  $('#nowName').textContent = n || ' ';
+}
+function beads(cols){
+  const seen = []; for (const c of cols){ if (c !== '000000' && !seen.includes(c)) seen.push(c); if (seen.length === 6) break; }
+  return '<span class="beads">' + (seen.length ? seen : ['000000']).map(c => c === '000000' ? '<i class="off"></i>' : `<i style="background:#${c};box-shadow:0 0 6px #${c}88"></i>`).join('') + '</span>';
+}
+function lookBtn(code, name, extra=''){
+  const cols = code === 'Custom' ? extra.split(',') : DATA.colors[code];
+  const pressed = P().look === code && (code !== 'Custom' || P().lookName === name);
+  return `<button class="look" data-code="${code}" data-name="${name.replace(/"/g,'&quot;')}" ${code==='Custom'?`data-cols="${extra}"`:''} aria-pressed="${pressed}"><span class="name">${name.replace(/</g,'&lt;')}</span>${beads(cols)}</button>`;
+}
+function holidayOrder(){
+  const m = new Date().getMonth() + 1, g = DATA.cats.holidays.slice();
+  const i = g.findIndex(x => x[2] >= m); return i <= 0 ? g : g.slice(i).concat(g.slice(0,i));
+}
+function renderLooks(){
+  if (!S.cat) S.cat = 'holidays';
+  $('#catChips').innerHTML = CATS.map(([k,l]) => `<button data-k="${k}" aria-pressed="${S.cat===k}">${l}</button>`).join('');
+  const area = $('#lookArea');
+  if (S.cat === 'holidays'){
+    area.innerHTML = holidayOrder().map(([h,list]) => `<p class="group-h">${h}</p><div class="looks">${list.map(([c,n]) => lookBtn(c,n)).join('')}</div>`).join('');
+  } else if (S.cat === 'mine'){
+    area.innerHTML = S.saved.length ? '<div style="display:grid;gap:10px">' + S.saved.map((s,i) =>
+      `<div class="saved-row">${lookBtn('Custom', s.name, s.colors.map(c=>c.replace('#','').toUpperCase()).join(','))}<button class="del" data-del="${i}" aria-label="Delete ${s.name}">Delete</button></div>`).join('') + '</div>'
+      : '<div class="empty">No saved looks yet. Make one on the Custom tab and tap Save.</div>';
+  } else {
+    area.innerHTML = '<div class="looks">' + DATA.cats[S.cat].map(([c,n]) => lookBtn(c,n)).join('') + '</div>';
+  }
+}
+$('#catChips').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.cat = b.dataset.k; renderLooks(); });
+$('#lookArea').addEventListener('click', async e => {
+  const del = e.target.closest('[data-del]');
+  if (del){ S.saved.splice(+del.dataset.del,1); save(); renderLooks(); return; }
+  const b = e.target.closest('.look'); if (!b) return;
+  const code = b.dataset.code, name = b.dataset.name;
+  if (code === 'Custom'){
+    S.custom = b.dataset.cols.split(',').map(h => '#'+h); renderBulbs8();
+    Object.assign(P(), {look:'Custom', lookName:name, power:true}); save();
+    renderLooks(); renderNow(); paintRoof();
+    send(customPath(), '/palette?palette=Custom');
+  } else {
+    Object.assign(P(), {look:code, lookName:null, power:true}); save();
+    renderLooks(); renderNow(); paintRoof();
+    send('/palette?palette=' + code);
+  }
+});
+
+/* ---------- power, brightness, speed ---------- */
+const pct = el => el.style.setProperty('--p', ((el.value-el.min)/(el.max-el.min)*100)+'%');
+// Sends while a slider moves (at most every `ms`), plus once on release; skips repeats of the same command.
+function throttleSend(paths, ms=350){
+  let last=0, t, lastKey='';
+  const go = (force) => { const ps = paths(), key = ps.join('|'); if (!force && key === lastKey) return; lastKey = key; last = Date.now(); send(...ps); };
+  return (final, force) => { clearTimeout(t);
+    if (final || Date.now()-last > ms) go(force); else t = setTimeout(() => go(force), ms); };
+}
+const sendBri = throttleSend(() => ['/brightness?brightness=' + String(Math.max(1, Math.round(P().bri*2.55))).padStart(3,'0')]);
+const sendSpd = throttleSend(() => ['/speed?speed=' + String(P().spd).padStart(2,'0')]);
+$('#bri').addEventListener('input', e => { P().bri = +e.target.value; P().power = true; $('#briOut').textContent = e.target.value+'%'; pct(e.target); paintRoof(); renderNow(); sendBri(); });
+$('#bri').addEventListener('change', () => { save(); sendBri(true); });
+$('#spd').addEventListener('input', e => { P().spd = +e.target.value; $('#spdOut').textContent = e.target.value; pct(e.target); sendSpd(); });
+$('#spd').addEventListener('change', () => { save(); sendSpd(true); });
+$('#onBtn').addEventListener('click', () => { P().power = true; save(); paintRoof(); renderNow(); sendBri(true, true); toast('Lights on'); });
+$('#offBtn').addEventListener('click', () => { P().power = false; save(); paintRoof(); renderNow(); send('/brightness?brightness=000'); toast('Lights off'); });
+
+/* ---------- controller picker ---------- */
+function renderCtl(){
+  document.querySelectorAll('#ctl button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === S.slot));
+  const p = P();
+  $('#bri').value = p.bri ?? 50; $('#briOut').textContent = ($('#bri').value)+'%'; pct($('#bri'));
+  $('#spd').value = p.spd ?? 4; $('#spdOut').textContent = $('#spd').value; pct($('#spd'));
+  $('#gap').value = p.gap ?? 2; $('#gapOut').textContent = $('#gap').value; pct($('#gap'));
+  $('#fill').value = p.fill ?? 1; $('#fillOut').textContent = $('#fill').value; pct($('#fill'));
+  renderFx(); renderNow(); paintRoof();
+}
+$('#ctl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  S.slot = +b.dataset.i; save(); renderCtl(); setStatus('wait'); ping(); });
+
+/* ---------- connection help ---------- */
+$('#ipSave').addEventListener('click', () => {
+  const v = $('#ipInput').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(v) && !/\.local$/.test(v)){ toast('Type the number exactly as shown'); return; }
+  S.ips[S.slot] = v; save(); setStatus('wait'); ping();
+});
+$('#retry').addEventListener('click', () => { setStatus('wait'); ping(); });
+
+/* ---------- motion ---------- */
+function renderFx(){
+  const p = P();
+  $('#fxList').innerHTML = EFFECTS.map(([n,c]) => `<button class="pick" data-fx="${c}" aria-pressed="${p.fx===c}"><span>${n}</span><canvas data-prev="${c}" aria-hidden="true"></canvas></button>`).join('');
+  document.querySelectorAll('#blendSeg button').forEach(b => b.setAttribute('aria-pressed', (p.blend||'blend') === b.dataset.b));
+}
+$('#fxList').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  P().fx = b.dataset.fx; save(); renderFx(); send('/pattern?pattern=' + b.dataset.fx); });
+$('#blendSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  P().blend = b.dataset.b; save(); renderFx(); send('/' + b.dataset.b); });
+const sendGap = throttleSend(() => ['/gapVal?gapVal=' + P().gap, '/pattern?pattern=AccentGap'], 500);
+const sendFill = throttleSend(() => ['/gapFillVal?gapFillVal=' + P().fill, '/pattern?pattern=AccentGap'], 500);
+$('#gap').addEventListener('input', e => { P().gap = +e.target.value; P().fx = 'AccentGap'; $('#gapOut').textContent = e.target.value; pct(e.target); renderFx(); sendGap(); });
+$('#gap').addEventListener('change', () => { save(); sendGap(true); });
+$('#fill').addEventListener('input', e => { P().fill = +e.target.value; P().fx = 'AccentGap'; $('#fillOut').textContent = e.target.value; pct(e.target); renderFx(); sendFill(); });
+$('#fill').addEventListener('change', () => { save(); sendFill(true); });
+
+/* ---------- custom ---------- */
+const rgb3 = hex => { const n = parseInt(hex.replace('#',''),16); return [n>>16&255, n>>8&255, n&255].map(v => String(v).padStart(3,'0')).join(''); };
+const customPath = () => '/Custom?CustomRGBs=' + S.custom.map(rgb3).join('');
+function renderBulbs8(){
+  $('#bulbs8').innerHTML = S.custom.map((c,i) => `<button data-i="${i}" aria-pressed="${S.sel===i}" aria-label="Bulb ${i+1}"><span class="glass" style="background:${c};${c.toUpperCase()==='#000000'?'':`box-shadow:0 0 14px ${c}99, 0 0 0 2px var(--rule)`}"></span><span class="n">${i+1}</span></button>`).join('');
+}
+$('#swatches').innerHTML = SWATCHES.map(c => `<button data-c="${c}" style="background:${c}" aria-label="${c==='#000000'?'Off (dark)':c}"></button>`).join('') +
+  '<label aria-label="Any color"><span></span><input type="color" id="anyColor" value="#FF7948"></label>';
+renderBulbs8();
+const pushCustom = throttleSend(() => [customPath(), '/palette?palette=Custom'], 450);
+function applyColor(c, all){
+  if (all) S.custom = S.custom.map(() => c); else S.custom[S.sel] = c;
+  Object.assign(P(), {look:'Custom', lookName:null, power:true}); save();
+  renderBulbs8(); renderNow(); paintRoof(); pushCustom(true, true);
+}
+$('#bulbs8').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.sel = +b.dataset.i; renderBulbs8(); });
+$('#swatches').addEventListener('click', e => { const b = e.target.closest('button[data-c]'); if (!b) return;
+  applyColor(b.dataset.c, false); if (S.sel < 7){ S.sel++; renderBulbs8(); } });
+$('#anyColor').addEventListener('change', e => applyColor(e.target.value.toUpperCase(), false));
+$('#paintAll').addEventListener('click', () => applyColor(S.custom[S.sel], true));
+$('#saveBtn').addEventListener('click', () => {
+  const name = $('#saveName').value.trim() || 'My look ' + (S.saved.length + 1);
+  if (S.saved.length >= 20){ toast('You can keep 20 looks. Delete one first.'); return; }
+  S.saved.push({name, colors:S.custom.slice()}); P().lookName = name; save(); $('#saveName').value = ''; renderNow(); toast('Saved to My looks');
+});
+
+/* ---------- timer ---------- */
+// Mk1.5.1 clock: TZ "MST7MDT,M4.1.0,M10.5.0" (Mountain time, old US daylight-saving dates).
+function controllerOffsetMin(d){
+  const y = d.getUTCFullYear();
+  const firstSunApr = new Date(Date.UTC(y,3,1)); firstSunApr.setUTCDate(1 + (7 - firstSunApr.getUTCDay()) % 7);
+  const lastSunOct = new Date(Date.UTC(y,9,31)); lastSunOct.setUTCDate(31 - lastSunOct.getUTCDay());
+  const start = firstSunApr.getTime() + 9*3600e3, end = lastSunOct.getTime() + 8*3600e3; // 2:00 local
+  return (d.getTime() >= start && d.getTime() < end) ? -360 : -420;
+}
+function toControllerClock(hhmm){
+  const [h,m] = hhmm.split(':').map(Number), d = new Date(); d.setHours(h, m, 0, 0);
+  const c = new Date(d.getTime() + controllerOffsetMin(d)*60000);
+  return String(c.getUTCHours()).padStart(2,'0') + ':' + String(c.getUTCMinutes()).padStart(2,'0');
+}
+function renderTimer(){ $('#timerTog').setAttribute('aria-checked', !!S.timer.on); $('#tOn').value = S.timer.tOn; $('#tOff').value = S.timer.tOff; }
+const sendTimes = () => send('/timer1?Timer1=' + toControllerClock(S.timer.tOn) + toControllerClock(S.timer.tOff));
+$('#timerTog').addEventListener('click', async () => {
+  S.timer.on = !S.timer.on; save(); renderTimer();
+  if (S.timer.on){ await sendTimes(); send('/activeTimer?activeTimer=1'); toast('Timer on'); }
+  else { send('/activeTimer?activeTimer=0'); toast('Timer off'); }
+});
+['tOn','tOff'].forEach(id => $('#'+id).addEventListener('change', e => {
+  if (!e.target.value) return; S.timer[id] = e.target.value; save(); sendTimes(); toast('Timer saved');
+}));
+
+/* ---------- help ---------- */
+$('#helpBtn').addEventListener('click', () => $('#help').classList.add('on'));
+$('#helpClose').addEventListener('click', () => $('#help').classList.remove('on'));
+$('#help').addEventListener('click', e => { if (e.target.id === 'help') $('#help').classList.remove('on'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#help').classList.remove('on'); });
+
+/* ---------- start ---------- */
+(async function start(){
+  const stay = new URLSearchParams(location.search).has('stay');
+  lnaPerm = await lnaStatus();
+  const wantSecure = !!lnaPerm;
+  $('#buildInfo').textContent = CONFIG.version + (wantSecure ? ', network permission mode' : ', direct mode');
+  if (CONFIG.switchScheme && !stay && !isLocalDev()){
+    if (wantSecure && location.protocol === 'http:'){ location.replace(otherSchemeUrl(true)); return; }
+    if (!wantSecure && location.protocol === 'https:'){ location.replace(otherSchemeUrl(false)); return; }
+  }
+  const alt = new URL(otherSchemeUrl(location.protocol !== 'https:'), location.href); alt.searchParams.set('stay','1');
+  $('#altLink').innerHTML = `Still not working? <a href="${alt}" style="color:var(--text)">Try the other version of this page</a>.`;
+
+  renderCtl(); renderTimer(); renderLooks(); setStatus('wait');
+  requestAnimationFrame(tick);
+
+  // Chrome only asks for network permission after a tap, so gate the first request behind one.
+  if (lnaPerm && lnaPerm.state === 'prompt'){
+    $('#gate').classList.add('on'); renderFrame(performance.now(), 0, true);
+    $('#gateBtn').addEventListener('click', async () => {
+      $('#gateBtn').textContent = 'Connecting…';
+      await ping();
+      $('#gate').classList.remove('on');
+    });
+    lnaPerm.onchange = () => { if (lnaPerm.state === 'granted'){ $('#gate').classList.remove('on'); ping(); } };
+  } else if (lnaPerm && lnaPerm.state === 'denied'){
+    setStatus('bad'); $('#help').classList.add('on');
+  } else {
+    ping();
+  }
+})();
+</script>
+</body>
+</html>
