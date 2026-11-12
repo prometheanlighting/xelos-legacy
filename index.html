@@ -177,6 +177,9 @@ input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;bac
 .trouble.on{display:block}
 .trouble p{margin:0 0 10px;color:var(--muted);font-size:15px}
 .trouble b{color:var(--text)}
+.manual{margin-top:14px}
+.manual summary{color:var(--muted);font-size:15px;cursor:pointer;padding:6px 0}
+.manual .field{margin-top:8px}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--night);padding:10px 18px;border-radius:22px;font-weight:600;font-size:15px;opacity:0;transition:.2s;pointer-events:none;z-index:30;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 /* add to home screen */
@@ -208,10 +211,13 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
   <p class="nowplaying" id="nowName">&nbsp;</p>
 
   <div class="trouble" id="trouble">
-    <p><b>Can't reach your lights.</b> Make sure this phone is on your home Wi‑Fi, not cellular data, and that the controller box has power.</p>
-    <p>Still stuck? Type the number shown on the little screen on your controller box.</p>
-    <input class="field" id="ipInput" inputmode="decimal" placeholder="Example: 192.168.1.42" autocomplete="off">
-    <div class="row"><button class="btn primary" id="ipSave">Connect</button><button class="btn ghost" id="retry">Try again</button></div>
+    <p><b>Can't reach your lights.</b> Make sure this device is on your home Wi‑Fi, not cellular data, and that the lights have power.</p>
+    <div class="row"><button class="btn primary" id="scanBtn">Search for my lights</button><button class="btn ghost" id="retry">Try again</button></div>
+    <details class="manual">
+      <summary>Enter the controller's address yourself</summary>
+      <input class="field" id="ipInput" inputmode="decimal" placeholder="Example: 192.168.1.42" autocomplete="off">
+      <div class="row"><button class="btn ghost" id="ipSave">Connect</button></div>
+    </details>
     <p class="fine" id="altLink" style="margin-top:12px"></p>
   </div>
 
@@ -324,12 +330,12 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
     <h1>Let's find your lights</h1>
     <p id="gateText">Make sure this phone is on your home Wi‑Fi. When your phone asks to find devices on your network, tap <b style="color:var(--text)">Allow</b>.</p>
     <div id="gateIp" hidden>
-      <label for="gateIpInput" class="gate-label">Number on your controller's screen</label>
+      <label for="gateIpInput" class="gate-label">Controller address</label>
       <input class="field" id="gateIpInput" inputmode="decimal" placeholder="Example: 192.168.1.42" autocomplete="off">
       <p class="gate-err" id="gateErr" role="alert"></p>
     </div>
     <button class="btn primary" id="gateBtn">Connect to my lights</button>
-    <button class="gate-skip" id="gateSkip" hidden>I don't see a number</button>
+    <button class="gate-skip" id="gateSkip" hidden>Type the address instead</button>
   </div>
 </div>
 
@@ -339,8 +345,8 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
     <h3>Lights aren't responding</h3>
     <ol>
       <li>Check that this phone is on your home Wi‑Fi. Turn off cellular data if you're not sure.</li>
-      <li>Check that the controller box is plugged in. Its little screen should show a number like 192.168.1.42.</li>
-      <li>Type that number on the Home screen under "Can't reach your lights," then tap Connect.</li>
+      <li>Check that the lights have power.</li>
+      <li>On the Home screen, tap <b>Search for my lights</b>. It checks your home network for your controllers and takes about 10 seconds.</li>
     </ol>
     <h3>Blocked network access by mistake?</h3>
     <p>Open your browser's settings for this site and set <b>Local network access</b> to Allow, then reload this page.</p>
@@ -701,9 +707,8 @@ function renderCtl(){
   renderFx(); renderNow(); paintRoof();
 }
 $('#ctl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
-  S.slot = +b.dataset.i; save(); renderCtl();
-  if (needsIp()){ setStatus('bad'); $('#ipInput').focus(); return; }
-  setStatus('wait'); ping(); });
+  S.slot = +b.dataset.i; save(); renderCtl(); setStatus('wait');
+  if (isAndroid && !S.ips[S.slot]) setStatus('bad'); else ping(); });
 
 /* ---------- connection help ---------- */
 $('#ipSave').addEventListener('click', () => {
@@ -711,7 +716,7 @@ $('#ipSave').addEventListener('click', () => {
   if (!validIp(v) && !/\.local$/.test(v)){ toast('Type the number exactly as shown'); return; }
   S.ips[S.slot] = v; save(); setStatus('wait'); ping();
 });
-$('#retry').addEventListener('click', () => { setStatus('wait'); ping(); });
+$('#retry').addEventListener('click', () => { setStatus('wait'); connect(); });
 
 /* ---------- motion ---------- */
 function renderFx(){
@@ -816,14 +821,94 @@ $('#installBtn').addEventListener('click', async () => {
 $('#installLater').addEventListener('click', () => { store.set('installDismissed', Date.now() + 14*864e5); $('#install').classList.remove('on'); });
 if ('serviceWorker' in navigator && window.isSecureContext && !isLocalDev()) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-/* ---------- Android: ask for the controller's IP up front ---------- */
+/* ---------- finding controllers without .local ---------- */
 // Android browsers (Chrome, Samsung Internet) don't resolve mDNS ".local" names; iPhones do (Bonjour).
-// The old Flutter app got around this with native mDNS discovery, which a web page can't do.
-// So on Android we ask for the IP shown on the controller's OLED before the first request.
+// The old Flutter app used native mDNS discovery, which a web page can't do, so on Android we sweep the
+// home network instead. Fingerprint: Mk1.5.1 runs two web servers, WebServer on :80 and a raw WiFiServer
+// on :81. A host answering HTTP on both is a controller. Probes are side-effect free on the controller:
+// ":81/xelos-probe" falls through every command check to the canned "GPIO is now" page, and ":80/time"
+// only reads the clock. Responses are opaque (no CORS), so "answered at all" is the signal.
 const isAndroid = /Android/i.test(navigator.userAgent);
-const needsIp = () => isAndroid && !S.ips[S.slot] && !HOST_OVERRIDE;
 const cleanIp = v => v.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'').replace(/,/g,'.');
 const validIp = v => /^(\d{1,3}\.){3}\d{1,3}$/.test(v) && v.split('.').every(n => +n <= 255);
+// Common home subnets, most likely first (ISP gateways, mesh systems: Google/Nest .86, Deco .68, eero .4, ASUS .50).
+const SUBNETS = ['192.168.1','192.168.0','10.0.0','192.168.86','192.168.68','192.168.4','192.168.50','10.0.1',
+  '192.168.2','192.168.10','192.168.100','10.1.10','192.168.3','192.168.5','192.168.8','192.168.11','192.168.15',
+  '192.168.29','192.168.31','192.168.88','172.16.0','10.10.10','10.0.2'];
+const SUBNET_EXTRA = {'192.168.68':['192.168.69','192.168.70','192.168.71']};   // Deco hands out a /22
+function probe(ip, port, path, ms){
+  const url = 'http://' + ip + (port === 80 ? '' : ':' + port) + path;
+  return fetch(url, Object.assign({mode:'no-cors', cache:'no-store', targetAddressSpace:'local'}, withTimeout(ms))).then(() => true, () => false);
+}
+async function pool(items, width, fn){
+  let next = 0; const out = new Array(items.length);
+  await Promise.all(Array.from({length: Math.min(width, items.length)}, async () => {
+    while (next < items.length){ const k = next++; out[k] = await fn(items[k], k); }
+  }));
+  return out;
+}
+const subnetOf = ip => ip.split('.').slice(0,3).join('.');
+async function findControllers(onProgress){
+  // 1) Which subnet are we on? Ask each common gateway (.1 / .254); the one that answers is ours.
+  //    Subnets of previously found controllers go first (DHCP usually keeps the same subnet).
+  const known = [...new Set(S.ips.filter(Boolean).filter(validIp).map(subnetOf))];
+  onProgress(2);
+  const gw = await pool(SUBNETS.flatMap(n => [n + '.1', n + '.254']), 48, ip => probe(ip, 80, '/', 1500));
+  const live = SUBNETS.filter((n, i) => gw[2*i] || gw[2*i+1]);
+  let order = [...new Set([...known, ...live])];
+  if (!order.length) order = SUBNETS.slice(0, 4);           // nothing answered: try the four most common
+  order = order.flatMap(n => [n, ...(SUBNET_EXTRA[n] || [])]);
+  // 2) Sweep each subnet's :81, confirm hits on :80. Stop at the first subnet with a controller.
+  const total = order.length * 254; let done = 0;
+  for (const net of order){
+    const hosts = Array.from({length:254}, (_, i) => net + '.' + (i+1));
+    const hits = [];
+    await pool(hosts, 48, async ip => {
+      if (await probe(ip, 81, '/xelos-probe', 1500) && await probe(ip, 80, '/time', 3000)) hits.push(ip);
+      onProgress(Math.min(99, 5 + Math.round(++done / total * 95)));
+    });
+    if (hits.length) return hits.sort((x, y) => +x.split('.')[3] - +y.split('.')[3]).slice(0, 4);
+  }
+  return [];
+}
+let scanning = null;
+function scanAndConnect(onProgress){
+  if (scanning) return scanning;
+  scanning = (async () => {
+    $('#trouble').classList.remove('on');
+    const prog = n => { $('#status').dataset.s = 'wait'; $('#statusText').textContent = 'Looking for your lights… ' + n + '%'; onProgress && onProgress(n); };
+    prog(0);
+    const found = await findControllers(prog);
+    if (!found.length){ setStatus('bad'); return false; }
+    S.ips = [0,1,2,3].map(i => found[i] || null);
+    if (!S.ips[S.slot]) S.slot = 0;
+    save(); renderCtl();
+    const ok = await ping();
+    if (ok) toast(found.length > 1 ? 'Found ' + found.length + ' controllers' : 'Found your lights');
+    return ok;
+  })().finally(() => { scanning = null; });
+  return scanning;
+}
+// Chrome asks "find devices on your network?" on the first local request. Fire one from the tap and wait
+// for the answer, so the sweep's short timeouts don't run out while the prompt is still on screen.
+function lnaDecision(){
+  if (!lnaPerm || lnaPerm.state !== 'prompt') return Promise.resolve(lnaPerm ? lnaPerm.state : 'granted');
+  return new Promise(res => {
+    const settle = () => { if (lnaPerm.state !== 'prompt') res(lnaPerm.state); };
+    lnaPerm.addEventListener('change', settle);
+    fetch('http://' + hostFor(S.slot) + '/time', {mode:'no-cors', cache:'no-store', targetAddressSpace:'local'})
+      .catch(() => {}).finally(() => setTimeout(() => res(lnaPerm.state === 'prompt' ? 'granted' : lnaPerm.state), 50));
+    setTimeout(() => res(lnaPerm.state), 120000);
+  });
+}
+// Normal connect: saved address / .local first, then sweep if that fails on Android (or if we found it by sweeping before).
+async function connect(){
+  if (await ping()) return true;
+  if (HOST_OVERRIDE) return false;
+  if (isAndroid || S.ips[S.slot]) return scanAndConnect();
+  return false;
+}
+$('#scanBtn').addEventListener('click', async () => { await lnaDecision(); scanAndConnect(); });
 
 /* ---------- start ---------- */
 (async function start(){
@@ -844,35 +929,39 @@ const validIp = v => /^(\d{1,3}\.){3}\d{1,3}$/.test(v) && v.split('.').every(n =
   renderCtl(); renderTimer(); renderLooks(); setStatus('wait');
   requestAnimationFrame(tick);
 
-  // Chrome only asks for network permission after a tap, so gate the first request behind one.
-  const ipMode = needsIp();
-  if (ipMode || (lnaPerm && lnaPerm.state === 'prompt')){
-    $('#gate').classList.add('on'); renderFrame(performance.now(), 0, true);
-    if (ipMode){
-      $('#gateText').innerHTML = 'Your controller box has a small screen with a number on it, like <b style="color:var(--text)">192.168.1.42</b>. Type it below.' +
-        (lnaPerm ? ' If your tablet or phone asks to find devices on your network, tap <b style="color:var(--text)">Allow</b>.' : '');
-      $('#gateIp').hidden = false; $('#gateSkip').hidden = false;
+  // First visit on Android, or Chrome still needs the network permission: one big button.
+  const firstRun = (isAndroid && !S.ips[S.slot] && !HOST_OVERRIDE) || (lnaPerm && lnaPerm.state === 'prompt');
+  if (lnaPerm && lnaPerm.state === 'denied'){ setStatus('bad'); $('#help').classList.add('on'); return; }
+  if (!firstRun){ connect(); return; }
+
+  $('#gate').classList.add('on'); renderFrame(performance.now(), 0, true);
+  if (isAndroid) $('#gateText').innerHTML = 'Make sure this device is on your home Wi‑Fi, then tap the button. It takes about 10 seconds to find your lights.' +
+    (lnaPerm ? ' If you\'re asked to allow finding devices on your network, tap <b style="color:var(--text)">Allow</b>.' : '');
+  $('#gateBtn').textContent = isAndroid ? 'Find my lights' : 'Connect to my lights';
+  const close = () => $('#gate').classList.remove('on');
+  let typed = false;
+  $('#gateBtn').addEventListener('click', async () => {
+    const btn = $('#gateBtn'), label = btn.textContent;
+    if (typed){
+      const v = cleanIp($('#gateIpInput').value);
+      if (!validIp(v)){ $('#gateErr').textContent = 'Type the address exactly as written, with the dots.'; return; }
+      S.ips[S.slot] = v; save();
     }
-    const close = () => { $('#gate').classList.remove('on'); };
-    $('#gateBtn').addEventListener('click', async () => {
-      if (ipMode){
-        const v = cleanIp($('#gateIpInput').value);
-        if (!validIp(v)){ $('#gateErr').textContent = 'Type the number exactly as it shows on the screen, with the dots.'; return; }
-        S.ips[S.slot] = v; save();
-      }
-      $('#gateErr').textContent = ''; $('#gateBtn').textContent = 'Connecting…'; $('#gateBtn').disabled = true;
-      const ok = await ping();
-      $('#gateBtn').textContent = 'Connect to my lights'; $('#gateBtn').disabled = false;
-      if (ok || !ipMode) close();
-      else $('#gateErr').textContent = "That number didn't answer. Check it matches the screen, and that this device is on your home Wi‑Fi.";
-    });
-    $('#gateSkip').addEventListener('click', async () => { close(); await ping(); });
-    if (!ipMode) lnaPerm.onchange = () => { if (lnaPerm.state === 'granted'){ close(); ping(); } };
-  } else if (lnaPerm && lnaPerm.state === 'denied'){
-    setStatus('bad'); $('#help').classList.add('on');
-  } else {
-    ping();
-  }
+    const perm = await lnaDecision();          // must be the first thing the tap does
+    if (perm === 'denied'){ close(); setStatus('bad'); $('#help').classList.add('on'); return; }
+    $('#gateErr').textContent = ''; btn.disabled = true; btn.textContent = 'Connecting…';
+    const ok = typed ? await ping() : (isAndroid ? await scanAndConnect(n => { btn.textContent = 'Looking for your lights… ' + n + '%'; }) : await connect());
+    btn.disabled = false; btn.textContent = isAndroid && !typed ? 'Search again' : label;
+    if (ok || !isAndroid){ close(); return; }
+    $('#gateErr').textContent = typed ? "That address didn't answer. Check it, and that this device is on your home Wi‑Fi."
+      : "Couldn't find your lights. Make sure this device is on the same Wi‑Fi as your lights and that they have power, then search again.";
+    $('#gateSkip').hidden = typed;
+  });
+  $('#gateSkip').addEventListener('click', () => {
+    typed = true; $('#gateIp').hidden = false; $('#gateSkip').hidden = true; $('#gateErr').textContent = '';
+    $('#gateBtn').textContent = 'Connect'; $('#gateIpInput').focus();
+  });
+  if (lnaPerm) lnaPerm.addEventListener('change', () => { if (lnaPerm.state === 'granted' && !isAndroid){ close(); connect(); } });
 })();
 </script>
 </body>
