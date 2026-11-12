@@ -8,6 +8,11 @@
 <title>Xelos</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Xelos">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
@@ -164,12 +169,26 @@ input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;bac
 .gate .btn{width:100%;height:68px;font-size:20px}
 .gate canvas{width:100%;aspect-ratio:3/1;display:block;margin-top:28px}
 .gate-logo{width:200px;height:auto;display:block;opacity:.95}
+.gate-label{display:block;font-weight:600;margin:0 0 8px}
+.gate .field{height:64px;font-size:22px;font-weight:600;letter-spacing:.02em}
+.gate-err{color:var(--warn)!important;min-height:1.4em;margin:8px 0 12px!important;font-size:15px}
+.gate-skip{display:block;width:100%;margin-top:14px;background:none;border:0;color:var(--muted);font-weight:600;height:44px;text-decoration:underline}
 .trouble{background:var(--panel);border-radius:var(--r-lg);padding:16px 18px;margin-top:14px;display:none}
 .trouble.on{display:block}
 .trouble p{margin:0 0 10px;color:var(--muted);font-size:15px}
 .trouble b{color:var(--text)}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--night);padding:10px 18px;border-radius:22px;font-weight:600;font-size:15px;opacity:0;transition:.2s;pointer-events:none;z-index:30;white-space:nowrap}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* add to home screen */
+.install{display:none;background:var(--panel);border-radius:var(--r-lg);padding:16px 18px;margin-top:14px;gap:14px;align-items:flex-start}
+.install.on{display:flex}
+.install img{width:52px;height:52px;border-radius:12px;flex:0 0 auto}
+.install .txt{flex:1;min-width:0}
+.install b{display:block;font-weight:600;font-size:17px;line-height:1.25}
+.install p{margin:4px 0 0;color:var(--muted);font-size:15px}
+.install .acts{display:flex;gap:8px;margin-top:12px}
+.install .btn{height:46px;flex:0 0 auto;padding:0 16px;font-size:16px}
+.share-ico{display:inline-block;width:18px;height:18px;vertical-align:-3px;color:var(--text)}
 footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -199,6 +218,15 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
   <div class="power">
     <button class="btn-on" id="onBtn">On</button>
     <button class="btn-off" id="offBtn">Off</button>
+  </div>
+
+  <div class="install" id="install" role="region" aria-label="Add to home screen">
+    <img src="apple-touch-icon.png" alt="">
+    <div class="txt">
+      <b>Put Xelos on your home screen</b>
+      <p id="installText">Open your lights with one tap, like an app.</p>
+      <div class="acts"><button class="btn primary" id="installBtn">Add to home screen</button><button class="btn ghost" id="installLater">Not now</button></div>
+    </div>
   </div>
 
   <!-- HOME -->
@@ -295,7 +323,13 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin:36px 0 8px}
     <canvas id="gateRoof" aria-hidden="true"></canvas>
     <h1>Let's find your lights</h1>
     <p id="gateText">Make sure this phone is on your home Wi‑Fi. When your phone asks to find devices on your network, tap <b style="color:var(--text)">Allow</b>.</p>
+    <div id="gateIp" hidden>
+      <label for="gateIpInput" class="gate-label">Number on your controller's screen</label>
+      <input class="field" id="gateIpInput" inputmode="decimal" placeholder="Example: 192.168.1.42" autocomplete="off">
+      <p class="gate-err" id="gateErr" role="alert"></p>
+    </div>
     <button class="btn primary" id="gateBtn">Connect to my lights</button>
+    <button class="gate-skip" id="gateSkip" hidden>I don't see a number</button>
   </div>
 </div>
 
@@ -414,6 +448,7 @@ const ping = () => send('/time');   // read-only on the controller; never reques
 /* ---------- status ---------- */
 function setStatus(s){
   const el = $('#status'); el.dataset.s = s;
+  if (s === 'ok' && !installReady){ installReady = true; setTimeout(maybeShowInstall, 1200); }
   $('#statusText').textContent = s === 'ok' ? 'Connected to ' + ctlName(S.slot)
     : s === 'bad' ? "Can't reach " + ctlName(S.slot) : 'Looking for ' + ctlName(S.slot);
   $('#trouble').classList.toggle('on', s === 'bad');
@@ -666,12 +701,14 @@ function renderCtl(){
   renderFx(); renderNow(); paintRoof();
 }
 $('#ctl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
-  S.slot = +b.dataset.i; save(); renderCtl(); setStatus('wait'); ping(); });
+  S.slot = +b.dataset.i; save(); renderCtl();
+  if (needsIp()){ setStatus('bad'); $('#ipInput').focus(); return; }
+  setStatus('wait'); ping(); });
 
 /* ---------- connection help ---------- */
 $('#ipSave').addEventListener('click', () => {
-  const v = $('#ipInput').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
-  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(v) && !/\.local$/.test(v)){ toast('Type the number exactly as shown'); return; }
+  const v = cleanIp($('#ipInput').value);
+  if (!validIp(v) && !/\.local$/.test(v)){ toast('Type the number exactly as shown'); return; }
   S.ips[S.slot] = v; save(); setStatus('wait'); ping();
 });
 $('#retry').addEventListener('click', () => { setStatus('wait'); ping(); });
@@ -750,6 +787,44 @@ $('#helpClose').addEventListener('click', () => $('#help').classList.remove('on'
 $('#help').addEventListener('click', e => { if (e.target.id === 'help') $('#help').classList.remove('on'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#help').classList.remove('on'); });
 
+/* ---------- add to home screen ---------- */
+// Chrome/Edge (Android, desktop): capture the install prompt and fire it from our own button.
+// iPhone/iPad: websites can't trigger it, so point at Safari's Share button instead.
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installEvt = null, installReady = false;
+const SHARE_SVG = '<svg class="share-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Share"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg>';
+function maybeShowInstall(){
+  if (!installReady || isStandalone() || store.get('installDismissed', 0) > Date.now()) return;
+  if (installEvt){
+    $('#installText').textContent = 'Open your lights with one tap, like an app.';
+    $('#installBtn').hidden = false; $('#install').classList.add('on');
+  } else if (isIOS){
+    $('#installText').innerHTML = `Tap ${SHARE_SVG} <b style="display:inline;font-size:inherit">Share</b> in Safari (it may be under <b style="display:inline;font-size:inherit">•••</b>), then <b style="display:inline;font-size:inherit">Add to Home Screen</b>.`;
+    $('#installBtn').hidden = true; $('#installLater').textContent = 'Got it'; $('#install').classList.add('on');
+  }
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; maybeShowInstall(); });
+window.addEventListener('appinstalled', () => { installEvt = null; $('#install').classList.remove('on'); toast('Added to your home screen'); });
+$('#installBtn').addEventListener('click', async () => {
+  if (!installEvt) return;
+  installEvt.prompt();
+  const { outcome } = await installEvt.userChoice; installEvt = null;
+  if (outcome !== 'accepted') store.set('installDismissed', Date.now() + 7*864e5);
+  $('#install').classList.remove('on');
+});
+$('#installLater').addEventListener('click', () => { store.set('installDismissed', Date.now() + 14*864e5); $('#install').classList.remove('on'); });
+if ('serviceWorker' in navigator && window.isSecureContext && !isLocalDev()) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* ---------- Android: ask for the controller's IP up front ---------- */
+// Android browsers (Chrome, Samsung Internet) don't resolve mDNS ".local" names; iPhones do (Bonjour).
+// The old Flutter app got around this with native mDNS discovery, which a web page can't do.
+// So on Android we ask for the IP shown on the controller's OLED before the first request.
+const isAndroid = /Android/i.test(navigator.userAgent);
+const needsIp = () => isAndroid && !S.ips[S.slot] && !HOST_OVERRIDE;
+const cleanIp = v => v.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'').replace(/,/g,'.');
+const validIp = v => /^(\d{1,3}\.){3}\d{1,3}$/.test(v) && v.split('.').every(n => +n <= 255);
+
 /* ---------- start ---------- */
 (async function start(){
   // `via` marks a page we already redirected once. If the server bounced us back, stop here instead of looping.
@@ -770,14 +845,29 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#help').c
   requestAnimationFrame(tick);
 
   // Chrome only asks for network permission after a tap, so gate the first request behind one.
-  if (lnaPerm && lnaPerm.state === 'prompt'){
+  const ipMode = needsIp();
+  if (ipMode || (lnaPerm && lnaPerm.state === 'prompt')){
     $('#gate').classList.add('on'); renderFrame(performance.now(), 0, true);
+    if (ipMode){
+      $('#gateText').innerHTML = 'Your controller box has a small screen with a number on it, like <b style="color:var(--text)">192.168.1.42</b>. Type it below.' +
+        (lnaPerm ? ' If your tablet or phone asks to find devices on your network, tap <b style="color:var(--text)">Allow</b>.' : '');
+      $('#gateIp').hidden = false; $('#gateSkip').hidden = false;
+    }
+    const close = () => { $('#gate').classList.remove('on'); };
     $('#gateBtn').addEventListener('click', async () => {
-      $('#gateBtn').textContent = 'Connecting…';
-      await ping();
-      $('#gate').classList.remove('on');
+      if (ipMode){
+        const v = cleanIp($('#gateIpInput').value);
+        if (!validIp(v)){ $('#gateErr').textContent = 'Type the number exactly as it shows on the screen, with the dots.'; return; }
+        S.ips[S.slot] = v; save();
+      }
+      $('#gateErr').textContent = ''; $('#gateBtn').textContent = 'Connecting…'; $('#gateBtn').disabled = true;
+      const ok = await ping();
+      $('#gateBtn').textContent = 'Connect to my lights'; $('#gateBtn').disabled = false;
+      if (ok || !ipMode) close();
+      else $('#gateErr').textContent = "That number didn't answer. Check it matches the screen, and that this device is on your home Wi‑Fi.";
     });
-    lnaPerm.onchange = () => { if (lnaPerm.state === 'granted'){ $('#gate').classList.remove('on'); ping(); } };
+    $('#gateSkip').addEventListener('click', async () => { close(); await ping(); });
+    if (!ipMode) lnaPerm.onchange = () => { if (lnaPerm.state === 'granted'){ close(); ping(); } };
   } else if (lnaPerm && lnaPerm.state === 'denied'){
     setStatus('bad'); $('#help').classList.add('on');
   } else {
